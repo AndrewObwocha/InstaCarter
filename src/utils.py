@@ -27,12 +27,13 @@ payload_dict: dict[str, Any] = {
     "instructions": [                                 # list
         "Primary retail store is Walmart"
     ],
-    "line_items": [],                                 # list of dicts (assuming 'line_item' is defined)
+    "line_items": [],                                 # list of dicts
     "landing_page_configuration": {                   # dict
         "partner_linkback_url": "string",
         "enable_pantry_items": True
     }
 }
+
 
 headers: dict[str, str] = {
     'Accept': "application/json",
@@ -40,8 +41,19 @@ headers: dict[str, str] = {
     'Authorization': f"Bearer {os.getenv('INSTACART_API_KEY')}"
 }
 
-def insert_items_into_payload(line_items: list[dict[str, Any]]) -> dict[str, Any]:
+
+def insert_items_into_payload() -> dict[str, Any]:
     global payload_dict
+
+    line_item: list[dict[str, Any]] = []
+
+    for index, value in id_mapping.items():
+        line_item.append({
+            "name": index,
+            "quantity": "1",
+            "unit": "kg",
+            "product_id": str(value)
+        })
 
     payload_dict["line_items"] = line_items
 
