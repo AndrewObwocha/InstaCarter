@@ -1,16 +1,22 @@
-# InstaCarter: Automate Your Instacart Shopping Lists
+# InstaCarter: Scheduled Instacart Shopping List Automation
 
-## Smart shopping list creation without the clicking.
+## Hands-free weekly shopping list management.
 
-InstaCarter is a Python CLI application that automates shopping list creation on Instacart. The application features a command-line interface for user input, backend integration with Instacart's API endpoints, and local product ID mapping stored in Python dictionaries. It validates user input and generates structured JSON payloads for seamless Instacart integration with optional expiration settings.
+InstaCarter is an automated Python application that generates and submits Instacart shopping lists on a scheduled basis. Running as a cron job, the application seamlessly creates shopping lists with predefined items, handling product mapping and API integration automatically. No manual intervention required.
 
-- **Automated Shopping List Creation** - Build Instacart shopping lists programmatically without manual entry.
-- **Intelligent Product Mapping** - Automatically maps product names to Instacart product IDs for faster processing.
-- **Simple CLI Interface** - Intuitive command-line prompts guide users through the shopping list creation process.
+- **Scheduled Automation** - Executes automatically every Friday at 7:30 AM via cron job.
+- **Intelligent Product Mapping** - Maps product names to Instacart product IDs for reliable list creation.
+- **Hands-Free Operation** - Runs in the background without CLI interaction or user prompts.
 
-## Installation and Usage
+## Setup and Configuration
 
-### For Regular Users
+### Prerequisites
+
+1. **Python 3.8+** - Required for running the application
+2. **Instacart API Credentials** - API key must be configured in `utils.py`
+3. **Unix-like Environment** - macOS, Linux, or WSL on Windows
+
+### Installation
 
 1. **Clone the repository:**
 
@@ -19,52 +25,59 @@ InstaCarter is a Python CLI application that automates shopping list creation on
    cd InstaCarter
    ```
 
-2. **Install Python (if not already installed):**
-   Download Python 3.8+ from [python.org](https://www.python.org)
+2. **Update Configuration:**
+   - Set your Instacart API key in `utils.py` (replace `<API-key>` in the headers)
+   - Define your shopping items in `models.py` or the main execution logic
 
-3. **Run the application:**
+3. **Make the script executable:**
 
    ```bash
-   python main.py
+   chmod +x run_instacart.sh
    ```
 
-4. **Follow the prompts:**
-   - Enter the number of items you want to add
-   - For each item, provide the product name, quantity, and unit of measurement
-   - The application will send your list to Instacart
+4. **Setup the Cron Job:**
 
-> **Note:** Before running, ensure your Instacart API key is set in `utils.py` (replace `<API-key>` in the headers).
+   Open your crontab editor:
 
-## For Developers
+   ```bash
+   crontab -e
+   ```
 
-### Project Structure
+   Add the following line to execute `run_instacart.sh` every Friday at 7:30 AM:
 
-- `main.py` - Entry point with CLI input handling
-- `models.py` - `LineItem` class for shopping item representation
-- `services.py` - API communication and payload construction
-- `utils.py` - Product ID mappings, headers, and payload templates
+   ```
+   30 7 * * 5 /path/to/InstaCarter/run_instacart.sh
+   ```
 
-### Setup
+   Replace `/path/to/InstaCarter` with the full absolute path to the InstaCarter directory.
 
-1. Clone the repository and navigate to the directory
-2. Ensure Python 3.8+ is installed
-3. Review and update the Instacart API key in `utils.py`
-4. Run with `python main.py`
+### Manual Execution
 
-### Key Components
+To run the application manually outside of the scheduled cron job:
 
-**LineItem Model:** Represents a shopping item with name, quantity, unit, and automatically resolved product ID from the local mapping.
+```bash
+./run_instacart.sh
+```
 
-**API Service:** Handles the Instacart API communication, converting line items into properly formatted requests.
+## Project Structure
 
-**Product Mapping:** Local dictionary (`id_mapping` in `utils.py`) maps product names to Instacart product IDs for quick resolution.
+- `main.py` - Core application logic for shopping list generation and submission
+- `models.py` - `LineItem` class representing shopping items
+- `services.py` - Instacart API communication and payload construction
+- `utils.py` - Product ID mappings, API headers, and payload templates
+- `run_instacart.sh` - Executable shell script for cron job integration
+- `logs/` - Application execution logs and error tracking
+
+## Monitoring and Troubleshooting
+
+Check the `logs/` directory for execution records and any errors encountered during scheduled runs.
 
 ## Contributing
 
 We welcome contributions! Here's how you can help:
 
-1. **Report Issues** - Found a bug? Use the Issues tab to report it with details about the behavior and environment.
-2. **Submit Enhancements** - Have a feature idea? Open an issue describing the enhancement and discuss the approach.
+1. **Report Issues** - Found a bug? Use the Issues tab with details about the behavior and environment.
+2. **Submit Enhancements** - Have a feature idea? Open an issue to discuss the approach.
 3. **Submit Pull Requests** - For bug fixes or features:
    - Create a new branch from `main`
    - Make your changes with clear commit messages
@@ -74,10 +87,10 @@ We welcome contributions! Here's how you can help:
 ### Areas for Contribution
 
 - Expand the product ID mapping database
-- Add support for additional grocery services
-- Improve error handling and user feedback
-- Add unit tests for better code reliability
-- Enhance the CLI with interactive features
+- Improve error logging and monitoring
+- Add error recovery mechanisms
+- Support for multiple shopping lists or profiles
+- Integration with other grocery services
 
 ## License
 
