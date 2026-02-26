@@ -1,4 +1,8 @@
+import os
+from dotenv import load_dotenv
 from typing import Any
+
+load_dotenv() 
 
 id_mapping: dict[str, int] = {
     "Tilda Basmati Rice": 254990,
@@ -33,7 +37,7 @@ payload_dict: dict[str, Any] = {
 headers: dict[str, str] = {
     'Accept': "application/json",
     'Content-Type': "application/json",
-    'Authorization': "Bearer <API-key>"
+    'Authorization': f"Bearer {os.getenv('INSTACART_API_KEY')}"
 }
 
 def insert_items_into_payload(line_items: list[dict[str, Any]]) -> dict[str, Any]:
