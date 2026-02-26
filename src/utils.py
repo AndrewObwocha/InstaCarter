@@ -55,7 +55,7 @@ def insert_items_into_payload() -> dict[str, Any]:
             "product_id": str(value)
         })
 
-    payload_dict["line_items"] = line_items
+    payload_dict["line_items"] = line_item
 
     return payload_dict
 
