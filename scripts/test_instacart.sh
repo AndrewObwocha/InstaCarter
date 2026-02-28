@@ -6,18 +6,18 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 if [[ ! -d "venv" ]]; then
-	echo "Virtual environment not found. Run: make setup" >&2
+	echo "Virtual environment not found. Run: make setup"
 	exit 1
 fi
 
 . venv/bin/activate 
 
-cat >> logs/run_instacart.log << EOF
+cat >> logs/test_instacart.log << EOF
 
 ================================================================================
-APPLICATION RUN: $(date '+%Y-%m-%d %H:%M:%S')
+TEST RUN: $(date '+%Y-%m-%d %H:%M:%S')
 ================================================================================
 
 EOF
 
-python -m src.main >> logs/run_instacart.log 2>&1
+python tests/config_test.py >> logs/test_instacart.log 2>&1

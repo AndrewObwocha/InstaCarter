@@ -1,4 +1,5 @@
 import unittest
+import logging
 from unittest.mock import patch
 
 from src.events.events import APISuccessEvent, ItemAddedEvent
@@ -7,10 +8,13 @@ from src.handlers.payload_builder import PayloadBuilder
 from src.handlers.product_resolver import ProductResolver
 from src.infra.event_bus import EventBus
 
+logger = logging.getLogger(__name__)
+
 
 class TestIntegrationFlow(unittest.TestCase):
 	@patch("src.handlers.payload_builder.ID_MAPPING", {"Tilda Basmati Rice": 254990})
 	def test_end_to_end_event_flow_publishes_success(self):
+		logger.info("Running: test_end_to_end_event_flow_publishes_success")
 		event_bus = EventBus()
 		ProductResolver(event_bus)
 		PayloadBuilder(event_bus)
@@ -26,6 +30,7 @@ class TestIntegrationFlow(unittest.TestCase):
 		self.assertEqual(received[0].response["status"], "ok")
 		self.assertIn("line_items", received[0].response["payload"])
 		self.assertEqual(len(received[0].response["payload"]["line_items"]), 1)
+		logger.info("✓ test_end_to_end_event_flow_publishes_success passed")
 
 
 if __name__ == "__main__":
