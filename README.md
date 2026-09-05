@@ -1,99 +1,130 @@
-# InstaCarter: Scheduled Instacart Shopping List Automation
+# Instacart-Auto-Shopper
 
-## Hands-free weekly shopping list management.
+Posts a fixed weekly shopping list to Instacart through their Connect API.
+Meant to run unattended, triggered by cron or any other scheduler.
 
-InstaCarter is an automated Python application that generates and submits Instacart shopping lists on a scheduled basis. Running as a cron job, the application seamlessly creates shopping lists with predefined items, handling product mapping and API integration automatically. No manual intervention required.
+## How it works
 
-- **Scheduled Automation** - Executes automatically every Friday at 7:30 AM via cron job.
-- **Intelligent Product Mapping** - Maps product names to Instacart product IDs for reliable list creation.
-- **Hands-Free Operation** - Runs in the background without CLI interaction or user prompts.
+`src/main.py` wires up an in-process event bus and three handlers, then
+publishes one event per item in a hardcoded product list:
 
-## Setup and Configuration
-
-### Prerequisites
-
-1. **Python 3.8+** - Required for running the application
-2. **Instacart API Credentials** - API key must be configured in `utils.py`
-3. **Unix-like Environment** - macOS, Linux, or WSL on Windows
-
-### Installation
-
-1. **Clone the repository:**
-
-   ```bash
-   git clone https://github.com/AndrewObwocha/InstaCarter.git
-   cd InstaCarter
-   ```
-
-2. **Update Configuration:**
-   - Set your Instacart API key in `utils.py` (replace `<API-key>` in the headers)
-   - Define your shopping items in `models.py` or the main execution logic
-
-3. **Make the script executable:**
-
-   ```bash
-   chmod +x run_instacart.sh
-   ```
-
-4. **Setup the Cron Job:**
-
-   Open your crontab editor:
-
-   ```bash
-   crontab -e
-   ```
-
-   Add the following line to execute `run_instacart.sh` every Friday at 7:30 AM:
-
-   ```
-   30 7 * * 5 /path/to/InstaCarter/run_instacart.sh
-   ```
-
-   Replace `/path/to/InstaCarter` with the full absolute path to the InstaCarter directory.
-
-### Manual Execution
-
-To run the application manually outside of the scheduled cron job:
-
-```bash
-./run_instacart.sh
+```
+ItemAddedEvent          → ProductResolver  → ProductIdResolvedEvent
+ProductIdResolvedEvent  → PayloadBuilder   → PayloadReadyEvent (once every item has resolved)
+PayloadReadyEvent       → APIClient        → POST to Instacart, then a success/failure event
 ```
 
-## Project Structure
+- **ProductResolver** looks up each item's Instacart product ID in
+  `ID_MAPPING` (`src/config.py`).
+- **PayloadBuilder** collects resolved items and only builds the final
+  payload once every item in `ID_MAPPING` has resolved.
+- **APIClient** posts that payload to Instacart's `products_link` endpoint
+  and logs the result.
 
-- `main.py` - Core application logic for shopping list generation and submission
-- `models.py` - `LineItem` class representing shopping items
-- `services.py` - Instacart API communication and payload construction
-- `utils.py` - Product ID mappings, API headers, and payload templates
-- `run_instacart.sh` - Executable shell script for cron job integration
-- `logs/` - Application execution logs and error tracking
+Nothing subscribes to the success/failure events besides the logger, so
+`python -m src.main` exits `0` whether or not the post actually succeeded —
+the log file is the only record of the outcome.
 
-## Monitoring and Troubleshooting
+## Project structure
 
-Check the `logs/` directory for execution records and any errors encountered during scheduled runs.
+```
+├── src/
+│   ├── main.py              # wires up the event bus and starts the run
+│   ├── config.py             # API URL, API key, item→product-ID map, payload template
+│   ├── events/events.py      # event dataclasses
+│   ├── infra/event_bus.py    # publish/subscribe bus
+│   ├── handlers/
+│   │   ├── product_resolver.py
+│   │   ├── payload_builder.py
+│   │   └── api_client.py
+│   └── utils/helpers.py      # build_payload()
+├── tests/
+│   ├── config_test.py        # discovers and runs the other test_*.py files
+│   ├── test_event_bus.py
+│   ├── test_handlers.py
+│   └── test_integration.py
+├── scripts/
+│   ├── run_instacart.sh
+│   └── test_instacart.sh
+├── Makefile
+└── requirements.txt
+```
 
-## Contributing
+## Prerequisites
 
-We welcome contributions! Here's how you can help:
+- Python 3.9 or later — `config.py` uses builtin generics (`dict[str, int]`)
+  as variable annotations, which Python evaluates eagerly and only supports
+  from 3.9 onward.
+- An Instacart Connect API key.
 
-1. **Report Issues** - Found a bug? Use the Issues tab with details about the behavior and environment.
-2. **Submit Enhancements** - Have a feature idea? Open an issue to discuss the approach.
-3. **Submit Pull Requests** - For bug fixes or features:
-   - Create a new branch from `main`
-   - Make your changes with clear commit messages
-   - Submit a PR referencing any related issues
-   - Ensure code follows the existing style
+## Setup
 
-### Areas for Contribution
+```bash
+git clone https://github.com/aobwocha/Instacart-Auto-Shopper.git
+cd Instacart-Auto-Shopper
+make setup      # creates venv/ and installs requirements.txt into it
+```
 
-- Expand the product ID mapping database
-- Improve error logging and monitoring
-- Add error recovery mechanisms
-- Support for multiple shopping lists or profiles
-- Integration with other grocery services
+Create a `.env` file in the project root with your API key — `config.py`
+loads it via `python-dotenv`:
 
-## License
+```
+INSTACART_API_KEY=your_key_here
+```
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Both `scripts/run_instacart.sh` and `scripts/test_instacart.sh` append their
+output to a `logs/` directory that isn't created automatically. Make it once
+before the first run:
 
----
+```bash
+mkdir -p logs
+```
+
+## Running
+
+```bash
+make run
+```
+
+This runs `scripts/run_instacart.sh`, which activates `venv/` and runs
+`python -m src.main`, appending stdout and stderr to `logs/run_instacart.log`.
+Because the script resolves its own project root from its file location, you
+can also call it directly by absolute path — useful for cron:
+
+```
+30 7 * * 5 /full/path/to/Instacart-Auto-Shopper/scripts/run_instacart.sh
+```
+
+## Testing
+
+```bash
+make test
+```
+
+This runs `scripts/test_instacart.sh`, which activates `venv/` and runs
+`tests/config_test.py` — a small unittest runner that discovers and executes
+every `test_*.py` file in `tests/` and appends the results to
+`logs/test_instacart.log`.
+
+## Changing the shopping list
+
+The list of items, their Instacart product IDs, and the payload template
+(retail store, list title, pantry-item setting) all live in
+`ID_MAPPING` and `BASE_PAYLOAD` in `src/config.py`. There's no CLI or config
+file for this — editing that dict is the only way to change what gets
+ordered.
+
+## Known limitations
+
+- Every line item is submitted as quantity `1`, unit `kg`, regardless of the
+  quantity and unit passed into `ItemAddedEvent` — `PayloadBuilder` hardcodes
+  both values rather than using the ones on the event.
+- If an item's name isn't in `ID_MAPPING`, `ProductResolver` publishes a
+  failure event that nothing else subscribes to, and `PayloadBuilder` keeps
+  waiting for a full set of successes — so the whole run stops silently,
+  with only a log warning to show for it. This can't happen with the current
+  `main.py`, since it publishes item names straight from `ID_MAPPING.keys()`,
+  but it would surface if the item list ever came from another source.
+- `BASE_PAYLOAD["landing_page_configuration"]["partner_linkback_url"]` is
+  still the literal placeholder `"string"`. Update it in `src/config.py` if
+  you want a real callback URL.
